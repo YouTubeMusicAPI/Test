@@ -11,10 +11,15 @@ async def search_duckduckgo(query: str):
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(search_url, headers=headers) as response:
-            html = await response.text()
-            return html
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(search_url, headers=headers) as response:
+                response.raise_for_status()  # Raise exception for bad HTTP responses
+                html = await response.text()
+                return html
+    except aiohttp.ClientError as e:
+        print(f"Error while fetching search results: {e}")
+        return None
 
 
 def parse_results(html: str):
@@ -35,4 +40,18 @@ def parse_results(html: str):
 
 async def Search(query: str):
     html = await search_duckduckgo(query)
+    
+    if html is None:
+        return []  # Return an empty list if no HTML was fetched
+
     return parse_results(html)
+
+
+# Example usage in an async event loop
+if __name__ == "__main__":
+    query = "Chandni"
+    loop = asyncio.get_event_loop()
+    results = loop.run_until_complete(Search(query))
+
+    for result in results:
+        print(f"Title: {result.title}, URL: {result.url}")
