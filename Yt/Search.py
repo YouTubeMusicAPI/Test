@@ -3,62 +3,44 @@ from bs4 import BeautifulSoup
 
 class YouTubeSearch:
     def __init__(self):
-        self.base_url = "https://www.youtube.com/results"
-
+        self.base_url = 'https://www.youtube.com/results?search_query='
+    
     def search(self, query, max_results=5):
-        # YouTube search URL format
-        url = f"{self.base_url}?search_query={query}"
+        search_url = f"{self.base_url}{query}"
+        response = requests.get(search_url)
+        
+        # Print the raw HTML to inspect
+        print("Raw HTML:\n", response.text[:1000])  # Print first 1000 characters of HTML
 
-        # Send HTTP request
-        response = requests.get(url)
-
-        # Parse the HTML content
         soup = BeautifulSoup(response.text, 'html.parser')
+        videos = []
 
-        # Find all video elements
-        video_results = []
-        for video in soup.find_all('a', {'href': True}):
-            href = video['href']
-            
-            if '/watch?v=' in href:  # This is a video
-                video_url = f"https://www.youtube.com{href}"
-                title = video.get('title')
-                
-                video_results.append({
-                    'title': title,
-                    'url': video_url
-                })
-                
-                if len(video_results) >= max_results:
-                    break
+        for video in soup.find_all('a', {'class': 'yt-uix-tile-link'}):
+            title = video.get('title')
+            url = f"https://www.youtube.com{video.get('href')}"
+            videos.append({'title': title, 'url': url})
 
-        return video_results
-
+            if len(videos) >= max_results:
+                break
+        
+        return videos
+    
     def search_playlists(self, query, max_results=5):
-        # YouTube search URL format for playlists
-        url = f"{self.base_url}?search_query={query}&sp=EgIQAw%253D%253D"  # sp=EgIQAw%253D%253D restricts search to playlists
-
-        # Send HTTP request
-        response = requests.get(url)
-
-        # Parse the HTML content
+        search_url = f"https://www.youtube.com/results?search_query={query}+playlist"
+        response = requests.get(search_url)
+        
+        # Print the raw HTML to inspect
+        print("Raw HTML:\n", response.text[:1000])  # Print first 1000 characters of HTML
+        
         soup = BeautifulSoup(response.text, 'html.parser')
+        playlists = []
 
-        # Find all playlist elements
-        playlist_results = []
-        for video in soup.find_all('a', {'href': True}):
-            href = video['href']
-            
-            if '/playlist?list=' in href:  # This is a playlist
-                playlist_url = f"https://www.youtube.com{href}"
-                title = video.get('title')
-                
-                playlist_results.append({
-                    'title': title,
-                    'url': playlist_url
-                })
-                
-                if len(playlist_results) >= max_results:
-                    break
+        for playlist in soup.find_all('a', {'class': 'yt-uix-tile-link'}):
+            title = playlist.get('title')
+            url = f"https://www.youtube.com{playlist.get('href')}"
+            playlists.append({'title': title, 'url': url})
 
-        return playlist_results
+            if len(playlists) >= max_results:
+                break
+        
+        return playlists
