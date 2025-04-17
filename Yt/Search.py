@@ -1,47 +1,64 @@
-import aiohttp
+import requests
 from bs4 import BeautifulSoup
-from .Models import YouTubeResult
-import asyncio
 
-async def search_duckduckgo(query: str):
-    search_url = f"https://duckduckgo.com/html/?q=site:youtube.com+{query}"
+class YouTubeSearch:
+    def __init__(self):
+        self.base_url = "https://www.youtube.com/results"
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1"
-    }
+    def search(self, query, max_results=5):
+        # YouTube search URL format
+        url = f"{self.base_url}?search_query={query}"
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(search_url, headers=headers) as response:
-            html = await response.text()
-            print(f"Raw HTML: {html[:500]}...")  # Print first 500 chars for debugging
-            return html
+        # Send HTTP request
+        response = requests.get(url)
 
+        # Parse the HTML content
+        soup = BeautifulSoup(response.text, 'html.parser')
 
-def parse_results(html: str):
-    soup = BeautifulSoup(html, 'html.parser')
-    results = []
+        # Find all video elements
+        video_results = []
+        for video in soup.find_all('a', {'href': True}):
+            href = video['href']
+            
+            if '/watch?v=' in href:  # This is a video
+                video_url = f"https://www.youtube.com{href}"
+                title = video.get('title')
+                
+                video_results.append({
+                    'title': title,
+                    'url': video_url
+                })
+                
+                if len(video_results) >= max_results:
+                    break
 
-    # Look for links containing 'result__a' class (DuckDuckGo's result links)
-    for a_tag in soup.find_all('a', class_='result__a'):
-        title = a_tag.get_text()
-        url = a_tag.get('href')
+        return video_results
 
-        if "youtube.com/watch" in url:
-            results.append(YouTubeResult(title=title, url=f"https://www.youtube.com{url}"))
+    def search_playlists(self, query, max_results=5):
+        # YouTube search URL format for playlists
+        url = f"{self.base_url}?search_query={query}&sp=EgIQAw%253D%253D"  # sp=EgIQAw%253D%253D restricts search to playlists
 
-    return results
+        # Send HTTP request
+        response = requests.get(url)
 
+        # Parse the HTML content
+        soup = BeautifulSoup(response.text, 'html.parser')
 
-async def Search(query: str):
-    html = await search_duckduckgo(query)
-    results = parse_results(html)
+        # Find all playlist elements
+        playlist_results = []
+        for video in soup.find_all('a', {'href': True}):
+            href = video['href']
+            
+            if '/playlist?list=' in href:  # This is a playlist
+                playlist_url = f"https://www.youtube.com{href}"
+                title = video.get('title')
+                
+                playlist_results.append({
+                    'title': title,
+                    'url': playlist_url
+                })
+                
+                if len(playlist_results) >= max_results:
+                    break
 
-    if not results:
-        print(f"No results found for '{query}'")
-    else:
-        print(f"Found {len(results)} results")
-    
-    return results
+        return playlist_results
