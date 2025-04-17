@@ -1,35 +1,25 @@
-import asyncio
-from playwright.async_api import async_playwright
+from Yt.Search import YouTubeSearch  # Assuming the search code is saved as YouTubeSearch.py
 
-async def search_duckduckgo(query: str):
-    search_url = f"https://duckduckgo.com/html/?q=site:youtube.com+{query}"
+def test_search(query):
+    youtube_search = YouTubeSearch()
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
-
-        # Go to DuckDuckGo search page
-        await page.goto(search_url)
-
-        # Wait for results to load
-        await page.wait_for_selector('a.result__a')
-
-        # Extract the results
-        links = await page.eval_on_selector_all('a.result__a', 'elements => elements.map(element => element.href)')
-
-        await browser.close()
-
-        return links
-
-
-async def main():
-    query = "Chandni"
-    results = await search_duckduckgo(query)
-    if results:
-        for url in results:
-            print(f"Found result: {url}")
+    print("Searching for songs...\n")
+    songs = youtube_search.search(query)
+    if songs:
+        for index, song in enumerate(songs, 1):
+            print(f"{index}. Title: {song['title']}, URL: {song['url']}")
     else:
-        print("No results found.")
+        print("No songs found.\n")
+    
+    print("\nSearching for playlists...\n")
+    playlists = youtube_search.search_playlists(query)
+    if playlists:
+        for index, playlist in enumerate(playlists, 1):
+            print(f"{index}. Title: {playlist['title']}, URL: {playlist['url']}")
+    else:
+        print("No playlists found.\n")
 
-# Run the main function
-asyncio.run(main())
+if __name__ == "__main__":
+    # Replace with the search query you want to test
+    query = input("Enter search query: ")
+    test_search(query)
