@@ -1,29 +1,11 @@
 import asyncio
-from Yt.Search import YouTubeSearch
+from Yt.Search import search_youtube
 
 async def main():
-    search_query = input("Enter search query: ")
-    print("Searching for songs...")
+    query = input("Enter search query: ")
+    results = await search_youtube(query)
+    for result in results:
+        print(f"Title: {result['title']}\nURL: {result['url']}\n")
 
-    youtube_search = YouTubeSearch()
-    songs = await youtube_search.search(search_query)
-
-    if songs:
-        print("\nSongs found:")
-        for song in songs:
-            print(f"Title: {song['title']}\nURL: {song['url']}\n")
-    else:
-        print("No songs found.")
-
-    print("\nSearching for playlists...")
-    playlists = await youtube_search.search_playlists(search_query)
-
-    if playlists:
-        print("\nPlaylists found:")
-        for playlist in playlists:
-            print(f"Title: {playlist['title']}\nURL: {playlist['url']}\n")
-    else:
-        print("No playlists found.")
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())
