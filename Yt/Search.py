@@ -14,30 +14,31 @@ def search_youtube_fastest(query: str, limit: int = 5):
     print("Raw HTML Response:")
     print(response.text[:1000])  # Print first 1000 chars to avoid too much output
 
-    # Look for any JavaScript variable containing YouTube data
-    match = re.search(r"window\['ytInitialData'\].*?=\s*({.*?});", response.text)
+    # Look for any JavaScript variable containing global data
+    match = re.search(r"window\.WIZ_global_data\s*=\s*(\{.*?\});", response.text)
     if not match:
-        print("ytInitialData regex failed")
+        print("No global data found")
         return []
 
     try:
         data = json.loads(match.group(1))
-        videos = []
-        sections = data["contents"]["twoColumnSearchResultsRenderer"]["primaryContents"]["sectionListRenderer"]["contents"]
-        for sec in sections:
-            items = sec.get("itemSectionRenderer", {}).get("contents", [])
-            for item in items:
-                video = item.get("videoRenderer")
-                if video:
-                    title = "".join([t.get("text", "") for t in video["title"]["runs"]])
-                    video_id = video["videoId"]
-                    url = f"https://www.youtube.com/watch?v={video_id}"
-                    videos.append({"title": title, "url": url})
-                if len(videos) >= limit:
-                    break
-            if len(videos) >= limit:
-                break
+        print("Extracted Data:", json.dumps(data, indent=4))  # Print the global data for inspection
+        # Process the data further here
+        videos = []  # Extract video details from the data if available
+        # You'll need to explore the extracted global data structure to find video information.
         return videos
     except Exception as e:
-        print(f"Error extracting data: {e}")
+        print(f"Error extracting global data: {e}")
         return []
+
+# Example usage
+query = input("Enter search query: ")
+videos = search_youtube_fastest(query)
+
+if videos:
+    print("Found Videos:")
+    for video in videos:
+        print(f"Title: {video['title']}")
+        print(f"URL: {video['url']}")
+else:
+    print("No videos found.")
