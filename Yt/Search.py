@@ -14,8 +14,8 @@ def search_youtube_fastest(query: str, limit: int = 5):
     print("Raw HTML Response:")
     print(response.text[:1000])  # Print first 1000 chars to avoid too much output
 
-    # Fastest regex way to extract ytInitialData
-    match = re.search(r"var ytInitialData = ({.*?});", response.text)
+    # Look for any JavaScript variable containing YouTube data
+    match = re.search(r"window\['ytInitialData'\].*?=\s*({.*?});", response.text)
     if not match:
         print("ytInitialData regex failed")
         return []
