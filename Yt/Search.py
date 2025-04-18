@@ -68,16 +68,4 @@ async def search_youtube(query: str, limit: int = 1):
         print(f"Request error: {e}")
         return []
 
-# Example usage
-import asyncio
 
-query = input("Enter search query: ")
-results = asyncio.run(search_youtube(query))
-
-if results:
-    print("Found Videos:")
-    for video in results:
-        print(f"Title: {video['title']}")
-        print(f"URL: {video['url']}")
-else:
-    print("No videos found.")
