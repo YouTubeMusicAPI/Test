@@ -1,25 +1,29 @@
-from Yt.Search import YouTubeSearch  # Assuming the search code is saved as YouTubeSearch.py
+import asyncio
+from Yt.Search import YouTubeSearch
 
-def test_search(query):
+async def main():
+    search_query = input("Enter search query: ")
+    print("Searching for songs...")
+
     youtube_search = YouTubeSearch()
+    songs = await youtube_search.search(search_query)
 
-    print("Searching for songs...\n")
-    songs = youtube_search.search(query)
     if songs:
-        for index, song in enumerate(songs, 1):
-            print(f"{index}. Title: {song['title']}, URL: {song['url']}")
+        print("\nSongs found:")
+        for song in songs:
+            print(f"Title: {song['title']}\nURL: {song['url']}\n")
     else:
-        print("No songs found.\n")
-    
-    print("\nSearching for playlists...\n")
-    playlists = youtube_search.search_playlists(query)
-    if playlists:
-        for index, playlist in enumerate(playlists, 1):
-            print(f"{index}. Title: {playlist['title']}, URL: {playlist['url']}")
-    else:
-        print("No playlists found.\n")
+        print("No songs found.")
 
-if __name__ == "__main__":
-    # Replace with the search query you want to test
-    query = input("Enter search query: ")
-    test_search(query)
+    print("\nSearching for playlists...")
+    playlists = await youtube_search.search_playlists(search_query)
+
+    if playlists:
+        print("\nPlaylists found:")
+        for playlist in playlists:
+            print(f"Title: {playlist['title']}\nURL: {playlist['url']}\n")
+    else:
+        print("No playlists found.")
+
+if __name__ == '__main__':
+    asyncio.run(main())
