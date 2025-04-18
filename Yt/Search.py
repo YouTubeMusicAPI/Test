@@ -11,9 +11,13 @@ def search_youtube_fastest(query: str, limit: int = 5):
     with httpx.Client(http2=True, timeout=3.0) as client:
         response = client.get(url, headers=headers)
 
+    print("Raw HTML Response:")
+    print(response.text[:1000])  # Print first 1000 chars to avoid too much output
+
     # Fastest regex way to extract ytInitialData
     match = re.search(r"var ytInitialData = ({.*?});", response.text)
     if not match:
+        print("ytInitialData regex failed")
         return []
 
     try:
@@ -35,4 +39,5 @@ def search_youtube_fastest(query: str, limit: int = 5):
                 break
         return videos
     except Exception as e:
+        print(f"Error extracting data: {e}")
         return []
