@@ -2,59 +2,37 @@ import httpx
 import re
 import json
 
-BASE_URL = "https://www.youtube.com/results?search_query="
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    )
-}
+def search_youtube_fastest(query: str, limit: int = 5):
+    url = f"https://m.youtube.com/results?search_query={query.replace(' ', '+')}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Mobile Safari/537.36",
+    }
 
-async def search_youtube(query: str, limit: int = 5):
-    url = BASE_URL + query.replace(" ", "+")
-    print(f"Searching: {url}")
+    with httpx.Client(http2=True, timeout=3.0) as client:
+        response = client.get(url, headers=headers)
 
-    async with httpx.AsyncClient(timeout=5) as client:
-        r = await client.get(url, headers=HEADERS)
-        print("Status Code:", r.status_code)
+    # Fastest regex way to extract ytInitialData
+    match = re.search(r"var ytInitialData = ({.*?});", response.text)
+    if not match:
+        return []
 
-        # More reliable pattern
-        match = re.search(r"var ytInitialData = ({.*?});", r.text) or \
-                re.search(r'window\["ytInitialData"\]\s*=\s*({.*?});', r.text)
-
-
-        if not match:
-            print("ytInitialData not found in response")
-            return []
-
-        try:
-            data = json.loads(match.group(1))
-        except Exception as e:
-            print("JSON parsing error:", e)
-            return []
-
-        try:
-            results = []
-            videos = data["contents"]["twoColumnSearchResultsRenderer"]["primaryContents"]\
-                ["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"]
-
-            for item in videos:
-                video_data = item.get("videoRenderer")
-                if not video_data:
-                    continue
-
-                title = video_data.get("title", {}).get("runs", [{}])[0].get("text", "Unknown Title")
-                video_id = video_data.get("videoId")
-                if not video_id:
-                    continue
-
-                url = f"https://www.youtube.com/watch?v={video_id}"
-                results.append({"title": title, "url": url})
-                if len(results) >= limit:
+    try:
+        data = json.loads(match.group(1))
+        videos = []
+        sections = data["contents"]["twoColumnSearchResultsRenderer"]["primaryContents"]["sectionListRenderer"]["contents"]
+        for sec in sections:
+            items = sec.get("itemSectionRenderer", {}).get("contents", [])
+            for item in items:
+                video = item.get("videoRenderer")
+                if video:
+                    title = "".join([t.get("text", "") for t in video["title"]["runs"]])
+                    video_id = video["videoId"]
+                    url = f"https://www.youtube.com/watch?v={video_id}"
+                    videos.append({"title": title, "url": url})
+                if len(videos) >= limit:
                     break
-
-            return results
-        except Exception as e:
-            print("Parsing error:", e)
-            return []
+            if len(videos) >= limit:
+                break
+        return videos
+    except Exception as e:
+        return []
