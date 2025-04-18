@@ -21,7 +21,8 @@ async def search_youtube(query: str, limit: int = 5):
 
         # More reliable pattern
         match = re.search(r"var ytInitialData = ({.*?});", r.text) or \
-                re.search(r"window\[\\"ytInitialData\\"].*?=\s*({.*?});</script>", r.text)
+                re.search(r'window\["ytInitialData"\]\s*=\s*({.*?});', r.text)
+
 
         if not match:
             print("ytInitialData not found in response")
