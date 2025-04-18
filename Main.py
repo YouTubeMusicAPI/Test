@@ -4,6 +4,8 @@ from Yt.Search import search_youtube
 async def main():
     query = input("Enter search query: ")
     results = await search_youtube(query)
+    if not results:
+        print("No results found.")
     for result in results:
         print(f"Title: {result['title']}\nURL: {result['url']}\n")
 
