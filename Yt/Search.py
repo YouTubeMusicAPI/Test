@@ -2,43 +2,59 @@ import httpx
 import re
 import json
 
-def search_youtube_fastest(query: str, limit: int = 5):
-    url = f"https://m.youtube.com/results?search_query={query.replace(' ', '+')}"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Mobile Safari/537.36",
-    }
+BASE_URL = "https://www.youtube.com/results?search_query="
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    )
+}
 
-    with httpx.Client(http2=True, timeout=3.0) as client:
-        response = client.get(url, headers=headers)
+async def search_youtube(query: str, limit: int = 5):
+    url = BASE_URL + query.replace(" ", "+")
+    print(f"Searching: {url}")
 
-    print("Raw HTML Response:")
-    print(response.text[:1000])  # Print first 1000 chars to avoid too much output
+    async with httpx.AsyncClient(timeout=5) as client:
+        r = await client.get(url, headers=HEADERS)
+        print("Status Code:", r.status_code)
 
-    # Look for any JavaScript variable containing global data
-    match = re.search(r"window\.WIZ_global_data\s*=\s*(\{.*?\});", response.text)
-    if not match:
-        print("No global data found")
-        return []
+        # More reliable pattern
+        match = re.search(r"var ytInitialData = ({.*?});", r.text) or \
+                re.search(r'window\["ytInitialData"\]\s*=\s*({.*?});', r.text)
 
-    try:
-        data = json.loads(match.group(1))
-        print("Extracted Data:", json.dumps(data, indent=4))  # Print the global data for inspection
-        # Process the data further here
-        videos = []  # Extract video details from the data if available
-        # You'll need to explore the extracted global data structure to find video information.
-        return videos
-    except Exception as e:
-        print(f"Error extracting global data: {e}")
-        return []
 
-# Example usage
-query = input("Enter search query: ")
-videos = search_youtube_fastest(query)
+        if not match:
+            print("ytInitialData not found in response")
+            return []
 
-if videos:
-    print("Found Videos:")
-    for video in videos:
-        print(f"Title: {video['title']}")
-        print(f"URL: {video['url']}")
-else:
-    print("No videos found.")
+        try:
+            data = json.loads(match.group(1))
+        except Exception as e:
+            print("JSON parsing error:", e)
+            return []
+
+        try:
+            results = []
+            videos = data["contents"]["twoColumnSearchResultsRenderer"]["primaryContents"]\
+                ["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"]
+
+            for item in videos:
+                video_data = item.get("videoRenderer")
+                if not video_data:
+                    continue
+
+                title = video_data.get("title", {}).get("runs", [{}])[0].get("text", "Unknown Title")
+                video_id = video_data.get("videoId")
+                if not video_id:
+                    continue
+
+                url = f"https://www.youtube.com/watch?v={video_id}"
+                results.append({"title": title, "url": url})
+                if len(results) >= limit:
+                    break
+
+            return results
+        except Exception as e:
+            print("Parsing error:", e)
+            return []
