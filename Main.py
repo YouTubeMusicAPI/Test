@@ -6,8 +6,11 @@ async def main():
     results = await search_youtube(query)
     if not results:
         print("No results found.")
-    for result in results:
-        print(f"Title: {result['title']}\nURL: {result['url']}\n")
+        return
+
+    print("\nResults:")
+    for res in results:
+        print(f"🎵 {res['title']}\n🔗 {res['url']}\n")
 
 if __name__ == "__main__":
     asyncio.run(main())
