@@ -1,5 +1,6 @@
 import httpx
-from selectolax.parser import HTMLParser
+import re
+import json
 
 MOBILE_URL = "https://m.youtube.com/results?search_query="
 
@@ -19,29 +20,46 @@ async def search_youtube(query: str, limit: int = 5):
         r = await client.get(url, headers=HEADERS)
         print("Status Code:", r.status_code)
 
-        html = HTMLParser(r.text)
-        results = []
+        if "ytInitialData" not in r.text:
+            print("ytInitialData not found in response")
+            return []
 
-        for a in html.css("a"):
-            href = a.attributes.get("href", "")
-            if not href.startswith("/watch"):
-                continue
+        data_raw = re.search(r"var ytInitialData = ({.*?});</script>", r.text)
+        if not data_raw:
+            print("ytInitialData regex failed")
+            return []
 
-            # Title may be wrapped inside span/div
-            title = a.text(strip=True)
-            if not title:
-                span = a.css_first("span")
-                if span:
-                    title = span.text(strip=True)
+        try:
+            data = json.loads(data_raw.group(1))
+        except Exception as e:
+            print("Failed to parse JSON:", e)
+            return []
 
-            if not title:
-                continue
+        # Traverse YouTube response data
+        try:
+            results = []
+            videos = data["contents"]["twoColumnSearchResultsRenderer"]["primaryContents"]\
+                ["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"]
 
-            video_url = f"https://www.youtube.com{href}"
-            results.append({"title": title, "url": video_url})
-            print(f"[FOUND] {title} -> {video_url}")
+            for video in videos:
+                video_data = video.get("videoRenderer")
+                if not video_data:
+                    continue
 
-            if len(results) >= limit:
-                break
+                video_id = video_data.get("videoId")
+                title_runs = video_data.get("title", {}).get("runs", [])
+                if not title_runs:
+                    continue
 
-        return results
+                title = title_runs[0]["text"]
+                url = f"https://www.youtube.com/watch?v={video_id}"
+
+                results.append({"title": title, "url": url})
+                if len(results) >= limit:
+                    break
+
+            return results
+
+        except Exception as e:
+            print("Error parsing results:", e)
+            return []
